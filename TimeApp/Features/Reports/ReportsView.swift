@@ -12,7 +12,7 @@ struct ReportsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: appModel.reportRange) { _ in
+                .onChange(of: appModel.reportRange) {
                     Task { await appModel.refreshReports() }
                 }
             }
@@ -63,4 +63,3 @@ struct ReportsView: View {
         .navigationTitle("报告")
     }
 }
-

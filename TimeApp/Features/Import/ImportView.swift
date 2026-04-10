@@ -101,7 +101,7 @@ private struct ImportBatchRow: View {
         ForEach(batch.screenshots) { screenshot in
             HStack {
                 Image(systemName: screenshot.kind == .overview ? "rectangle.stack" : "app")
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(Color.accentColor)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(screenshot.fileName)
                         .font(.footnote)
