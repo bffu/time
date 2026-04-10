@@ -1,4 +1,4 @@
-# TimeApp Scaffold
+# time
 
 `TimeApp` is a SwiftUI-first iPhone app scaffold for analyzing iOS Screen Time screenshots offline.
 
