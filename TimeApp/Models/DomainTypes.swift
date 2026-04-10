@@ -41,6 +41,21 @@ enum ImportBatchStatus: String, Codable, Sendable, CaseIterable {
     case readyForReview
     case imported
     case failed
+
+    var title: String {
+        switch self {
+        case .draft:
+            return "待识别"
+        case .processing:
+            return "处理中"
+        case .readyForReview:
+            return "待复核"
+        case .imported:
+            return "已导入"
+        case .failed:
+            return "失败"
+        }
+    }
 }
 
 enum DayCompleteness: String, Codable, Sendable, CaseIterable {
@@ -103,4 +118,3 @@ struct TimelineSlice: Codable, Hashable, Sendable, Identifiable {
     let startMinuteOfDay: Int
     let durationMinutes: Int
 }
-

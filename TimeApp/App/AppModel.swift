@@ -27,7 +27,7 @@ final class AppModel: ObservableObject {
         isBootstrapping = true
 
         await container.bootstrapCoordinator.seedPreviewDataIfNeeded()
-        await createSampleImportBatchIfNeeded()
+        await refreshImportBatches()
         await refreshSelectedDay()
         await refreshReports()
 
@@ -63,14 +63,8 @@ final class AppModel: ObservableObject {
         reportSnapshot = await container.reportService.snapshot(range: reportRange, endingOn: selectedDay)
     }
 
-    func createSampleImportBatchIfNeeded() async {
-        let existing = await container.batchRepository.fetchAll()
-        guard existing.isEmpty else {
-            importBatches = existing
-            return
-        }
-
-        await createSampleImportBatch()
+    func refreshImportBatches() async {
+        importBatches = await container.batchRepository.fetchAll()
     }
 
     func createSampleImportBatch() async {
@@ -80,16 +74,29 @@ final class AppModel: ObservableObject {
             URL(fileURLWithPath: "/tmp/app-detail-wechat-2026-04-09.png")
         ]
 
-        var batch = await container.importService.createBatch(from: imageURLs)
-        batch.status = .readyForReview
-        batch.candidateDay = selectedDay
-        batch.warningMessages = [
-            "样例批次仅用于 UI 骨架预览。",
-            "真实版本会在这里接入 PhotosUI 和 Share Extension。"
-        ]
+        await saveImportBatch(
+            from: imageURLs,
+            status: .readyForReview,
+            candidateDay: selectedDay,
+            warningMessages: [
+                "样例批次仅用于 UI 骨架预览。",
+                "真实版本会在这里接入 Share Extension 和识别流程。"
+            ]
+        )
+    }
 
-        await container.batchRepository.save(batch)
-        importBatches = await container.batchRepository.fetchAll()
+    func importPickedImages(from imageURLs: [URL], failedItemCount: Int = 0) async {
+        var warnings = ["当前仅完成原图入批，日期和 App 信息尚未识别。"]
+        if failedItemCount > 0 {
+            warnings.insert("\(failedItemCount) 张图片读取失败，已跳过。", at: 0)
+        }
+
+        await saveImportBatch(
+            from: imageURLs,
+            status: .draft,
+            candidateDay: nil,
+            warningMessages: warnings
+        )
     }
 
     func addManualBlock(title: String, startHour: Int, endHour: Int) async {
@@ -119,5 +126,22 @@ final class AppModel: ObservableObject {
         selectedDay = DayStamp(date: nextDate)
         await refreshSelectedDay()
         await refreshReports()
+    }
+
+    private func saveImportBatch(
+        from imageURLs: [URL],
+        status: ImportBatchStatus,
+        candidateDay: DayStamp?,
+        warningMessages: [String]
+    ) async {
+        guard !imageURLs.isEmpty else { return }
+
+        var batch = await container.importService.createBatch(from: imageURLs)
+        batch.status = status
+        batch.candidateDay = candidateDay
+        batch.warningMessages = warningMessages
+
+        await container.batchRepository.save(batch)
+        await refreshImportBatches()
     }
 }
