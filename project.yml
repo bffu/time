@@ -1,0 +1,67 @@
+name: TimeApp
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "17.0"
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    SWIFT_VERSION: 5.10
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+targets:
+  TimeApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: TimeApp
+        excludes:
+          - "**/*.md"
+    resources:
+      - path: TimeApp/Resources
+      - path: TimeApp/Preview Content
+    info:
+      path: Config/TimeApp-Info.plist
+    entitlements:
+      path: Config/TimeApp.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.TimeApp
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_CFBundleDisplayName: TimeApp
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+    dependencies:
+      - target: TimeShareExtension
+        embed: true
+  TimeShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: TimeShareExtension
+        excludes:
+          - "**/*.md"
+    info:
+      path: Config/TimeShareExtension-Info.plist
+    entitlements:
+      path: Config/TimeShareExtension.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.TimeApp.ShareExtension
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        INFOPLIST_KEY_CFBundleDisplayName: TimeShareExtension
+schemes:
+  TimeApp:
+    build:
+      targets:
+        TimeApp: all
+        TimeShareExtension: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    archive:
+      config: Release
