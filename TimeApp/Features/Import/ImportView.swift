@@ -200,6 +200,12 @@ private struct ImportBatchRow: View {
 
     @ViewBuilder
     private var warningList: some View {
+        if let errorMessage = batch.errorMessage, !errorMessage.isEmpty {
+            Label(errorMessage, systemImage: "xmark.octagon.fill")
+                .font(.caption)
+                .foregroundStyle(.red)
+        }
+
         if !batch.warningMessages.isEmpty {
             ForEach(batch.warningMessages, id: \.self) { warning in
                 Label(warning, systemImage: "exclamationmark.triangle")

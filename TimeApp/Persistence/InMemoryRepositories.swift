@@ -30,6 +30,14 @@ actor InMemoryAppUsageRepository: AppUsageRepository {
         hourlyStorage[day] = records
     }
 
+    func replaceDaily(day: DayStamp, with records: [AppUsageDaily]) async {
+        dailyStorage[day] = records
+    }
+
+    func replaceHourly(day: DayStamp, with records: [AppUsageHourly]) async {
+        hourlyStorage[day] = records
+    }
+
     func fetchDaily(day: DayStamp) async -> [AppUsageDaily] {
         dailyStorage[day] ?? []
     }
@@ -83,4 +91,3 @@ actor InMemoryImportBatchRepository: ImportBatchRepository {
         storage[id]
     }
 }
-

@@ -86,17 +86,20 @@ final class AppModel: ObservableObject {
     }
 
     func importPickedImages(from imageURLs: [URL], failedItemCount: Int = 0) async {
-        var warnings = ["当前仅完成原图入批，日期和 App 信息尚未识别。"]
+        var warnings = ["当前使用的是占位识别管线，识别结果仅用于流程联调。"]
         if failedItemCount > 0 {
             warnings.insert("\(failedItemCount) 张图片读取失败，已跳过。", at: 0)
         }
 
-        await saveImportBatch(
+        let batch = await saveImportBatch(
             from: imageURLs,
-            status: .draft,
+            status: .processing,
             candidateDay: nil,
             warningMessages: warnings
         )
+
+        guard let batch else { return }
+        await processImportBatch(batch)
     }
 
     func addManualBlock(title: String, startHour: Int, endHour: Int) async {
@@ -133,15 +136,70 @@ final class AppModel: ObservableObject {
         status: ImportBatchStatus,
         candidateDay: DayStamp?,
         warningMessages: [String]
-    ) async {
-        guard !imageURLs.isEmpty else { return }
+    ) async -> ImportBatch? {
+        guard !imageURLs.isEmpty else { return nil }
 
         var batch = await container.importService.createBatch(from: imageURLs)
         batch.status = status
         batch.candidateDay = candidateDay
         batch.warningMessages = warningMessages
+        batch.errorMessage = nil
 
         await container.batchRepository.save(batch)
         await refreshImportBatches()
+        return batch
+    }
+
+    private func processImportBatch(_ batch: ImportBatch) async {
+        let envelope = await container.recognitionPipeline.process(batch: batch)
+        let recognizedDay = envelope.overview?.day ?? envelope.appDetails.first?.day
+        let manualBlocks: [ManualActivityBlock]
+        if let recognizedDay {
+            manualBlocks = await container.manualRepository.fetch(day: recognizedDay)
+        } else {
+            manualBlocks = []
+        }
+
+        guard let output = await container.reconciliationEngine.reconcile(envelope, manualBlocks: manualBlocks) else {
+            var failedBatch = batch
+            failedBatch.screenshots = envelope.screenshots
+            failedBatch.candidateDay = recognizedDay
+            failedBatch.status = .failed
+            failedBatch.errorMessage = "未能从当前截图识别出有效日期或可用统计。"
+            failedBatch.warningMessages = mergeWarnings(
+                batch.warningMessages,
+                ["请至少导入一张“总览”或可解析日期的截图。"]
+            )
+
+            await container.batchRepository.save(failedBatch)
+            await refreshImportBatches()
+            return
+        }
+
+        await container.dayRepository.save(output.dayRecord)
+        await container.usageRepository.replaceDaily(day: output.dayRecord.day, with: output.dailyUsages)
+        await container.usageRepository.replaceHourly(day: output.dayRecord.day, with: output.hourlyUsages)
+
+        var completedBatch = batch
+        completedBatch.screenshots = envelope.screenshots
+        completedBatch.candidateDay = output.dayRecord.day
+        completedBatch.status = .readyForReview
+        completedBatch.warningMessages = mergeWarnings(batch.warningMessages, output.warnings)
+        completedBatch.errorMessage = nil
+
+        await container.batchRepository.save(completedBatch)
+        await refreshImportBatches()
+        await refreshSelectedDay()
+        await refreshReports()
+    }
+
+    private func mergeWarnings(_ base: [String], _ additional: [String]) -> [String] {
+        var merged: [String] = []
+        for warning in base + additional {
+            if !merged.contains(warning) {
+                merged.append(warning)
+            }
+        }
+        return merged
     }
 }
