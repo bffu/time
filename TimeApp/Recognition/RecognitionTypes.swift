@@ -67,32 +67,46 @@ protocol HourlyChartParsing: Sendable {
     func parseHourlyUsage(from imageURL: URL, kind: ScreenshotKind) async -> [HourSlot]
 }
 
-struct PlaceholderOCRService: ImageTextRecognizing {
-    func recognizeTextBlocks(from imageURL: URL) async throws -> [OCRTextBlock] {
-        let descriptiveName = imageURL.deletingPathExtension().lastPathComponent
-            .replacingOccurrences(of: "_", with: " ")
-            .replacingOccurrences(of: "-", with: " ")
-        let parentFolder = imageURL.deletingLastPathComponent().lastPathComponent
-        let syntheticText = "\(descriptiveName) \(parentFolder)"
-
-        return [
-            OCRTextBlock(
-                text: syntheticText,
-                normalizedBoundingBox: CGRectPayload(x: 0.1, y: 0.1, width: 0.8, height: 0.1),
-                confidence: 0.5
-            )
-        ]
-    }
-}
-
 struct RuleBasedScreenshotClassifier: ScreenshotClassifying {
     func classify(blocks: [OCRTextBlock]) async -> ClassifiedScreenshot {
         let joinedText = blocks.map(\.text).joined(separator: " ")
-        if joinedText.contains("最常使用") || joinedText.contains("每天") {
-            return ClassifiedScreenshot(kind: .overview, confidence: 0.7)
+        let normalized = joinedText.lowercased()
+        let overviewSignals = [
+            ("最常使用", 3),
+            ("类别", 2),
+            ("拿起次数", 2),
+            ("每天", 1),
+            ("屏幕使用时间", 1),
+            ("most used", 3),
+            ("categories", 2),
+            ("pickups", 2),
+            ("screen time", 1)
+        ]
+        let appDetailSignals = [
+            ("通知", 3),
+            ("限额", 2),
+            ("日均", 1),
+            ("每日平均", 1),
+            ("notifications", 3),
+            ("limits", 2),
+            ("daily average", 1)
+        ]
+
+        let overviewScore = overviewSignals.reduce(0) { score, signal in
+            normalized.contains(signal.0.lowercased()) ? score + signal.1 : score
         }
-        if joinedText.contains("通知") || joinedText.contains("日均") {
-            return ClassifiedScreenshot(kind: .appDetail, confidence: 0.7)
+        let detailScore = appDetailSignals.reduce(0) { score, signal in
+            normalized.contains(signal.0.lowercased()) ? score + signal.1 : score
+        }
+
+        if overviewScore >= 2, overviewScore >= detailScore {
+            return ClassifiedScreenshot(kind: .overview, confidence: min(0.92, 0.58 + Double(overviewScore) * 0.05))
+        }
+        if detailScore > 0 {
+            return ClassifiedScreenshot(kind: .appDetail, confidence: min(0.92, 0.58 + Double(detailScore) * 0.06))
+        }
+        if overviewScore > 0 {
+            return ClassifiedScreenshot(kind: .overview, confidence: min(0.7, 0.55 + Double(overviewScore) * 0.04))
         }
         return fallback(for: joinedText)
     }
@@ -112,7 +126,7 @@ struct RuleBasedScreenshotClassifier: ScreenshotClassifying {
 
         let hashValue = joinedText.unicodeScalars.reduce(0) { ($0 &* 31) &+ Int($1.value) }
         let kind: ScreenshotKind = (hashValue % 2 == 0) ? .overview : .appDetail
-        return ClassifiedScreenshot(kind: kind, confidence: 0.55)
+        return ClassifiedScreenshot(kind: kind, confidence: 0.45)
     }
 
     private func importIndex(in normalized: String) -> Int? {
@@ -123,66 +137,5 @@ struct RuleBasedScreenshotClassifier: ScreenshotClassifying {
         let matched = String(normalized[range])
         let digits = matched.filter { $0.isNumber }
         return Int(digits)
-    }
-}
-
-struct PlaceholderOverviewParser: OverviewParsing {
-    func parseOverview(from blocks: [OCRTextBlock], imageURL: URL) async -> RecognizedOverview {
-        RecognizedOverview(
-            day: DayStamp(date: .now),
-            totalScreenMinutes: 387,
-            categorySummaries: ["创意": 206, "信息与阅读": 32],
-            topApps: ["抖音": 206, "微信": 74]
-        )
-    }
-}
-
-struct PlaceholderAppDetailParser: AppDetailParsing {
-    func parseAppDetail(from blocks: [OCRTextBlock], imageURL: URL) async -> RecognizedAppDetail {
-        let sampleApps = ["抖音", "微信", "哔哩哔哩", "小红书", "Safari", "网易云音乐"]
-        let hashValue = imageURL.lastPathComponent.unicodeScalars.reduce(0) { ($0 &* 31) &+ Int($1.value) }
-        let appName = sampleApps[abs(hashValue) % sampleApps.count]
-        let hourlyUsage: [HourSlot] = [
-            HourSlot(hour: 0, minutes: 26),
-            HourSlot(hour: 1, minutes: 18),
-            HourSlot(hour: 2, minutes: 12),
-            HourSlot(hour: 12, minutes: 7),
-            HourSlot(hour: 18, minutes: 21),
-            HourSlot(hour: 19, minutes: 34),
-            HourSlot(hour: 20, minutes: 15)
-        ]
-
-        return RecognizedAppDetail(
-            day: DayStamp(date: .now),
-            appName: appName,
-            totalMinutes: hourlyUsage.reduce(0) { $0 + $1.minutes },
-            averageDailyMinutes: 142,
-            notificationCount: 16,
-            hourlyUsage: hourlyUsage
-        )
-    }
-}
-
-struct PlaceholderHourlyChartParser: HourlyChartParsing {
-    func parseHourlyUsage(from imageURL: URL, kind: ScreenshotKind) async -> [HourSlot] {
-        switch kind {
-        case .overview:
-            return (0..<24).map { hour in
-                let minutes = [0, 1, 2, 18, 19, 20].contains(hour) ? [26, 18, 12, 28, 36, 14].randomElement() ?? 10 : 0
-                return HourSlot(hour: hour, minutes: minutes)
-            }
-        case .appDetail:
-            return [
-                HourSlot(hour: 0, minutes: 26),
-                HourSlot(hour: 1, minutes: 18),
-                HourSlot(hour: 2, minutes: 12),
-                HourSlot(hour: 12, minutes: 7),
-                HourSlot(hour: 18, minutes: 21),
-                HourSlot(hour: 19, minutes: 34),
-                HourSlot(hour: 20, minutes: 15)
-            ]
-        case .unknown:
-            return []
-        }
     }
 }

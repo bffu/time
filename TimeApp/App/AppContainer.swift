@@ -14,6 +14,7 @@ final class AppContainer {
     let reportService: ReportProviding
     let bootstrapCoordinator: AppBootstrapping
     let daySnapshotService: DaySnapshotProviding
+    let sharedImportInbox: SharedImportInboxReading
 
     init(
         dayRepository: DayRecordRepository = InMemoryDayRecordRepository(),
@@ -27,7 +28,9 @@ final class AppContainer {
         manualActivityService: ManualActivityManaging? = nil,
         reportService: ReportProviding? = nil,
         bootstrapCoordinator: AppBootstrapping? = nil,
-        daySnapshotService: DaySnapshotProviding? = nil
+        daySnapshotService: DaySnapshotProviding? = nil,
+        sharedImportInbox: SharedImportInboxReading = AppGroupImportInbox(),
+        seedPreviewData: Bool = false
     ) {
         self.dayRepository = dayRepository
         self.usageRepository = usageRepository
@@ -37,13 +40,14 @@ final class AppContainer {
         self.reconciliationEngine = reconciliationEngine
 
         let pipeline = recognitionPipeline ?? RecognitionPipeline(
-            ocrService: PlaceholderOCRService(),
+            ocrService: VisionOCRService(),
             classifier: RuleBasedScreenshotClassifier(),
-            overviewParser: PlaceholderOverviewParser(),
-            appDetailParser: PlaceholderAppDetailParser(),
-            chartParser: PlaceholderHourlyChartParser()
+            overviewParser: TextOverviewParser(),
+            appDetailParser: TextAppDetailParser(),
+            chartParser: ImageHourlyChartParser()
         )
         self.recognitionPipeline = pipeline
+        self.sharedImportInbox = sharedImportInbox
 
         let timeline = timelineService ?? TimelineService()
         self.timelineService = timeline
@@ -57,7 +61,8 @@ final class AppContainer {
         let bootstrap = bootstrapCoordinator ?? AppBootstrapCoordinator(
             dayRepository: dayRepository,
             usageRepository: usageRepository,
-            manualRepository: manualRepository
+            manualRepository: manualRepository,
+            shouldSeedPreviewData: seedPreviewData
         )
         self.bootstrapCoordinator = bootstrap
 
@@ -69,6 +74,12 @@ final class AppContainer {
         self.daySnapshotService = snapshotService
     }
 
-    static let preview = AppContainer()
-}
+    static let live = AppContainer(
+        dayRepository: FileBackedDayRecordRepository(),
+        usageRepository: FileBackedAppUsageRepository(),
+        manualRepository: FileBackedManualActivityRepository(),
+        batchRepository: FileBackedImportBatchRepository()
+    )
 
+    static let preview = AppContainer(seedPreviewData: true)
+}

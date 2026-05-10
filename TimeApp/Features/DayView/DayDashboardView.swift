@@ -37,7 +37,7 @@ struct DayDashboardView: View {
                     }
                 }
 
-                AppSectionCard(title: "24 小时钟盘", subtitle: "当前是按分钟总量铺开的占位实现，后续可改为更贴近小时桶的绘制策略。") {
+                AppSectionCard(title: "24 小时钟盘", subtitle: "按当天时间线切片展示手机使用、手动补录和未记录时间。") {
                     ClockRingView(timeline: appModel.timeline)
                         .frame(height: 260)
                 }

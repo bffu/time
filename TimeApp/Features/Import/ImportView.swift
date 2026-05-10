@@ -52,8 +52,8 @@ struct ImportView: View {
                 .buttonStyle(.bordered)
                 .disabled(isImportingPhotos)
 
-                Label("截图分享待接入 Share Extension", systemImage: "square.and.arrow.up")
-                Label("识别结果待接入 Vision + 图表解析", systemImage: "text.viewfinder")
+                Label("分享扩展会写入共享导入箱", systemImage: "square.and.arrow.up")
+                Label("导入后执行 Vision OCR 与图表解析", systemImage: "text.viewfinder")
 
                 if isImportingPhotos {
                     ProgressView("正在生成导入批次…")
@@ -79,7 +79,7 @@ struct ImportView: View {
     }
 
     private var importFlowSection: some View {
-        AppSectionCard(title: "导入后的处理流", subtitle: "当前代码已经把服务边界拆好，后续只需要把占位实现替换为真实识别。") {
+        AppSectionCard(title: "导入后的处理流", subtitle: "图片会经过 OCR、分类、图表解析和对账，最后合成当天记录。") {
             VStack(alignment: .leading, spacing: 8) {
                 Text("1. 图片进入 ImportBatch")
                 Text("2. OCR 提取文本块")
@@ -145,7 +145,7 @@ struct ImportView: View {
     }
 
     private func makeImportDirectory(using fileManager: FileManager) throws -> URL {
-        let baseDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first ?? fileManager.temporaryDirectory
+        let baseDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? fileManager.temporaryDirectory
         let importDirectory = baseDirectory
             .appendingPathComponent("ImportedScreenshots", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)

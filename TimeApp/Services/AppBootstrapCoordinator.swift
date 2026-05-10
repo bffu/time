@@ -8,8 +8,23 @@ struct AppBootstrapCoordinator: AppBootstrapping {
     let dayRepository: DayRecordRepository
     let usageRepository: AppUsageRepository
     let manualRepository: ManualActivityRepository
+    let shouldSeedPreviewData: Bool
+
+    init(
+        dayRepository: DayRecordRepository,
+        usageRepository: AppUsageRepository,
+        manualRepository: ManualActivityRepository,
+        shouldSeedPreviewData: Bool = false
+    ) {
+        self.dayRepository = dayRepository
+        self.usageRepository = usageRepository
+        self.manualRepository = manualRepository
+        self.shouldSeedPreviewData = shouldSeedPreviewData
+    }
 
     func seedPreviewDataIfNeeded() async {
+        guard shouldSeedPreviewData else { return }
+
         let records = await dayRepository.fetchAll()
         guard records.isEmpty else { return }
 
@@ -35,4 +50,3 @@ struct AppBootstrapCoordinator: AppBootstrapping {
         }
     }
 }
-

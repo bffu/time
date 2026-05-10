@@ -1,16 +1,15 @@
-# Share Extension Placeholder
+# Share Extension
 
-This directory contains the initial share extension entry point.
+This directory contains the iOS share extension entry point.
 
 Current behavior:
 
 - accepts images from the iOS share sheet
-- validates that at least one shared attachment conforms to `public.image`
-- immediately completes the extension request
+- copies shared image payloads into the app group container
+- writes a JSON import manifest for the main app
+- lets the main app consume pending shared batches when it starts or returns to the foreground
 
-What still needs to be implemented:
+Remaining work:
 
-1. copy shared image payloads into the app group container
-2. create an import manifest that the main app can read
-3. trigger the main app to refresh imported screenshots
-4. add basic user feedback for success and failure states
+1. add visible success and failure feedback inside the extension UI
+2. add cleanup rules for old consumed batches after the main app has imported them

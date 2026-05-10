@@ -53,6 +53,18 @@ targets:
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
         INFOPLIST_KEY_CFBundleDisplayName: TimeShareExtension
+  TimeAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TimeAppTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.TimeAppTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/TimeApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TimeApp"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    dependencies:
+      - target: TimeApp
 schemes:
   TimeApp:
     build:
@@ -63,5 +75,7 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets:
+        - TimeAppTests
     archive:
       config: Release

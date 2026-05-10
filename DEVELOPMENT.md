@@ -2,13 +2,13 @@
 
 ## Current State
 
-This repository is in scaffold mode. The source tree, SwiftUI navigation shell, app state wiring, and placeholder services already exist, but real iOS framework integration is still pending.
+This repository is a functional SwiftUI scaffold. The source tree, navigation shell, app state wiring, Vision OCR, text parsing, chart image analysis, JSON-backed repositories, and share-extension app-group handoff are wired, while first Xcode compile verification is still pending.
 
 ## Working Assumptions
 
 - product type: native iPhone app
 - UI framework: `SwiftUI`
-- persistence direction: `SwiftData` later, in-memory placeholders now
+- persistence direction: JSON file-backed repositories now, `SwiftData` later
 - OCR direction: `Vision`
 - chart parsing direction: custom local image analysis
 - import methods: in-app image picker and iOS share extension
@@ -20,7 +20,7 @@ This repository is in scaffold mode. The source tree, SwiftUI navigation shell, 
 - `TimeApp/Models`
   domain entities
 - `TimeApp/Persistence`
-  repository protocols and temporary in-memory stores
+  repository protocols, JSON file-backed stores, and preview in-memory stores
 - `TimeApp/Services`
   import, reporting, timeline, and orchestration services
 - `TimeApp/Recognition`
@@ -39,7 +39,7 @@ This repository is in scaffold mode. The source tree, SwiftUI navigation shell, 
 3. run `xcodegen generate`
 4. open `TimeApp.xcodeproj`
 5. validate the existing SwiftUI shell under `TimeApp/App` and `TimeApp/Features`
-6. wire real OCR and image parsing into `TimeApp/Recognition`
+6. validate and tune the OCR and chart parsing behavior with real screenshots
 
 ## CI Strategy
 
@@ -57,16 +57,14 @@ The workflow assumes the Swift source tree and the generated Xcode project spec 
 ## Known Gaps
 
 - SwiftUI shell exists but has not been compiled in Xcode yet
-- no test target
-- no real OCR implementation
-- no real image parsing implementation
-- no persistent storage layer
-- no working app group manifest handoff in the share extension
+- the test target is initial and should grow with real screenshot fixtures
+- JSON-backed persistence exists, but there is no `SwiftData` schema yet
+- chart parsing is heuristic and should be tuned with real screenshots
 
 ## Recommended Next Steps
 
 1. run a first Xcode compile and fix compiler issues
 2. validate `project.yml` on macOS with `xcodegen`
-3. replace placeholder OCR and chart parsing implementations
-4. swap the in-memory repositories for `SwiftData`
-5. only then add signing and TestFlight packaging
+3. test recognition accuracy on real Chinese and English Screen Time screenshots
+4. keep JSON persistence for MVP or migrate it to `SwiftData` when richer querying is needed
+5. add signing and TestFlight packaging

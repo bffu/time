@@ -27,6 +27,7 @@ final class AppModel: ObservableObject {
         isBootstrapping = true
 
         await container.bootstrapCoordinator.seedPreviewDataIfNeeded()
+        await importSharedExtensionBatchesIfNeeded()
         await refreshImportBatches()
         await refreshSelectedDay()
         await refreshReports()
@@ -80,13 +81,13 @@ final class AppModel: ObservableObject {
             candidateDay: selectedDay,
             warningMessages: [
                 "样例批次仅用于 UI 骨架预览。",
-                "真实版本会在这里接入 Share Extension 和识别流程。"
+                "可用相册或分享扩展导入真实截图。"
             ]
         )
     }
 
     func importPickedImages(from imageURLs: [URL], failedItemCount: Int = 0) async {
-        var warnings = ["当前使用的是占位识别管线，识别结果仅用于流程联调。"]
+        var warnings: [String] = []
         if failedItemCount > 0 {
             warnings.insert("\(failedItemCount) 张图片读取失败，已跳过。", at: 0)
         }
@@ -102,6 +103,15 @@ final class AppModel: ObservableObject {
         await processImportBatch(batch)
     }
 
+    func importSharedExtensionBatchesIfNeeded() async {
+        let batches = await container.sharedImportInbox.takePendingImageBatches()
+        guard !batches.isEmpty else { return }
+
+        for imageURLs in batches {
+            await importPickedImages(from: imageURLs)
+        }
+    }
+
     func addManualBlock(title: String, startHour: Int, endHour: Int) async {
         guard startHour < endHour, let dayRecord else { return }
         let block = ManualActivityBlock(
@@ -111,7 +121,9 @@ final class AppModel: ObservableObject {
             endMinuteOfDay: endHour * 60,
             color: .green
         )
-        await container.manualActivityService.save(block: block)
+        guard await container.manualActivityService.save(block: block) else {
+            return
+        }
         await refreshSelectedDay()
         await refreshReports()
     }
@@ -168,7 +180,7 @@ final class AppModel: ObservableObject {
             failedBatch.errorMessage = "未能从当前截图识别出有效日期或可用统计。"
             failedBatch.warningMessages = mergeWarnings(
                 batch.warningMessages,
-                ["请至少导入一张“总览”或可解析日期的截图。"]
+                envelope.warnings + ["请至少导入一张“总览”或可解析日期的截图。"]
             )
 
             await container.batchRepository.save(failedBatch)

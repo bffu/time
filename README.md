@@ -6,7 +6,7 @@ The current repository is a starter skeleton, not a finished or signed iOS app. 
 
 - establish a clean project structure for a native iPhone app
 - define the domain model for screenshot imports, hourly app usage, manual time blocks, and reports
-- leave extension points for Vision OCR, chart parsing, and local persistence
+- process screenshots with Vision OCR, text parsing, local chart analysis, and repository-backed app state
 - make it possible to generate an Xcode project from Windows-authored files with `XcodeGen`
 
 ## What Exists Today
@@ -14,7 +14,7 @@ The current repository is a starter skeleton, not a finished or signed iOS app. 
 - `TimeApp/`
   Swift source tree for the app, organized by app shell, models, persistence, services, recognition, features, and shared UI.
 - `TimeShareExtension/`
-  Share extension placeholder for receiving screenshots from the iOS share sheet.
+  Share extension entry point that copies shared screenshots into the app group container and writes an import manifest.
 - `Config/`
   App and extension `Info.plist` files plus app group entitlements.
 - `project.yml`
@@ -49,7 +49,7 @@ open TimeApp.xcodeproj
 ## Build Notes
 
 - The app target is intended to host SwiftUI screens and app logic.
-- The share extension target is only a placeholder right now.
+- The share extension target writes shared image batches into the configured app group for the main app to consume.
 - Code signing is still required for real device installation.
 - GitHub Actions can do unsigned CI builds on macOS runners, but device installs still need Apple signing assets.
 
@@ -73,10 +73,10 @@ Important limitation:
 ## Next Implementation Priorities
 
 1. make the SwiftUI shell compile cleanly in Xcode
-2. add real `Vision` OCR and screenshot classification
-3. add chart parsing for hourly usage extraction
-4. persist imported screenshots and derived records with `SwiftData`
-5. finish the app group data handoff between share extension and main app
+2. tune `Vision` OCR, screenshot classification, and chart parsing with real screenshots
+3. add review UI for low-confidence recognition results
+4. keep JSON-backed persistence for MVP or migrate to `SwiftData` if richer querying is needed
+5. finish signing and device-install packaging
 
 ## Useful Root Files
 

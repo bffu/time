@@ -2,13 +2,14 @@
 
 ## Goal
 
-Build an iPhone app skeleton for offline analysis of iOS Screen Time screenshots.
+Build an iPhone app for offline analysis of iOS Screen Time screenshots.
 
 Primary stack:
 
 - `SwiftUI`
 - `Vision` for local OCR
-- `SwiftData` later, currently replaced by in-memory repositories for scaffold speed
+- local image analysis for hourly chart bars
+- repository protocols with JSON file-backed stores for the live app
 - `Share Extension`
 - `XcodeGen` via `project.yml` because this workspace is being prepared from Windows
 
@@ -20,60 +21,42 @@ Already created:
 - `Config/*.plist`
 - `Config/*.entitlements`
 - `TimeShareExtension/ShareViewController.swift`
-- Domain models in `TimeApp/Models`
-- Repository protocols and in-memory implementations in `TimeApp/Persistence`
-- Recognition protocol layer and placeholder implementations in `TimeApp/Recognition`
-- Service layer skeleton in `TimeApp/Services`
-- App shell in `TimeApp/App`
+- domain models in `TimeApp/Models`
+- repository protocols, JSON file-backed stores, and preview in-memory stores in `TimeApp/Persistence`
+- recognition protocol layer in `TimeApp/Recognition`
+- Vision OCR service in `TimeApp/Recognition/VisionOCRService.swift`
+- OCR text parsers in `TimeApp/Recognition/TextScreenTimeParsers.swift`
+- hourly chart parser in `TimeApp/Recognition/ImageHourlyChartParser.swift`
+- app-group inbox reader in `TimeApp/Services/AppGroupImportInbox.swift`
+- service layer in `TimeApp/Services`
+- app shell in `TimeApp/App`
 - SwiftUI pages in `TimeApp/Features`
-- Shared components in `TimeApp/SharedUI`
-- Root docs: `README.md`, `DEVELOPMENT.md`, `PROJECT_PROGRESS.md`
+- shared components in `TimeApp/SharedUI`
+- root docs: `README.md`, `DEVELOPMENT.md`, `PROJECT_PROGRESS.md`
 - CI workflow: `.github/workflows/ios-unsigned-ipa.yml`
-- Progress file: `PROJECT_PROGRESS.md`
 
-Still placeholder / not production-ready:
+Still not production-ready:
 
-- real `Vision` OCR
-- real hourly chart parser
-- `SwiftData` persistence
-- true app group handoff inside the share extension
 - first compile verification on macOS / Xcode
+- OCR and chart parsing accuracy on a broad real screenshot set
+- `SwiftData` persistence
+- import review UI for low-confidence recognition
+- cleanup policy for consumed app-group share batches
 
 ## Recommended Work Order
 
 1. Run `xcodegen generate` on macOS.
-2. Build once in Xcode or with `xcodebuild` and fix compile issues.
-3. Replace placeholder OCR and chart parsing implementations.
-4. Replace in-memory repositories with `SwiftData`.
-5. Wire the share extension payload into the app group container.
-
-## Suggested Next Parallel Split
-
-Worker 1:
-
-- replace `PlaceholderOCRService`
-- implement screenshot text extraction with `Vision`
-
-Worker 2:
-
-- replace `PlaceholderHourlyChartParser`
-- build chart-region detection and hour bar extraction
-
-Worker 3:
-
-- swap in-memory repositories for `SwiftData`
-- keep repository protocols stable
-
-Worker 4:
-
-- finish share extension file persistence
-- add import review flow for low-confidence recognition
+2. Build once in Xcode or with `xcodebuild` and fix compiler issues.
+3. Test recognition with real Chinese and English Screen Time screenshots.
+4. Add review UI for low-confidence OCR/classification/chart results.
+5. Migrate the JSON file-backed repositories to `SwiftData`.
+6. Add signing and TestFlight packaging.
 
 ## Architecture Notes
 
 ### Domain
 
-Key types already present:
+Key types:
 
 - `DayRecord`
 - `ImportedScreenshot`
@@ -85,35 +68,53 @@ Key types already present:
 
 ### Persistence
 
-Current scaffold uses in-memory repositories:
+Current live repositories:
+
+- `FileBackedDayRecordRepository`
+- `FileBackedAppUsageRepository`
+- `FileBackedManualActivityRepository`
+- `FileBackedImportBatchRepository`
+
+Preview repositories:
 
 - `InMemoryDayRecordRepository`
 - `InMemoryAppUsageRepository`
 - `InMemoryManualActivityRepository`
 - `InMemoryImportBatchRepository`
 
-Later migration path:
+Migration path:
 
-- Keep repository protocols
-- Replace implementations with SwiftData-backed repositories
+- Keep repository protocols stable.
+- Replace implementations with SwiftData-backed repositories.
+- Preserve import and reconciliation call sites.
 
 ### Recognition
 
-Current placeholder pipeline:
+Current pipeline:
 
-- `PlaceholderOCRService`
+- `VisionOCRService`
 - `RuleBasedScreenshotClassifier`
-- `PlaceholderOverviewParser`
-- `PlaceholderAppDetailParser`
-- `PlaceholderHourlyChartParser`
+- `TextOverviewParser`
+- `TextAppDetailParser`
+- `ImageHourlyChartParser`
 - `DefaultReconciliationEngine`
 
-Real implementation later should replace the placeholder pieces with:
+The pipeline extracts OCR blocks, classifies screenshots as overview or app detail, parses dates and durations from text, estimates hourly chart bars from image pixels, and reconciles the result into day/app/hourly records.
 
-- `Vision` OCR
-- rule-based screenshot anchoring
-- custom chart image parsing
-- confidence-driven reconciliation
+### Share Extension
+
+The share extension now:
+
+- receives image attachments from the iOS share sheet
+- copies them into `group.com.example.TimeApp/IncomingShares/<batch-id>/`
+- writes `manifest.json`
+
+The main app now:
+
+- reads pending manifests via `AppGroupImportInbox`
+- imports shared batches during bootstrap
+- checks again when the app returns to the foreground
+- marks consumed manifests as `manifest.processed.json` while leaving image files available to imported records
 
 ## Build Strategy
 
@@ -133,18 +134,18 @@ From GitHub Actions:
 
 ## Known Caveats
 
-- Current repository is a scaffold, not yet a full compile-verified app.
+- This Windows environment does not include `swift`, Xcode, or `xcodegen`, so local compile verification was not possible here.
 - The CI artifact is an unsigned `ipa`; it is useful for build verification, not direct normal-device installation.
-- `TimelineService` currently lays out imported app usage sequentially for visualization only.
-- `ChartParser` is placeholder logic.
-- Share extension currently accepts images but does not persist payloads to the app group yet.
-- App models are plain Swift structs; no SwiftData models are wired yet.
+- `TimelineService` currently lays out imported app usage sequentially for visualization.
+- The chart parser is heuristic and should be tuned against real screenshots.
+- App models are plain Swift structs persisted through JSON repositories; no SwiftData models are wired yet.
 
 ## Immediate Next Files To Focus On
 
-- `TimeApp/Recognition/RecognitionTypes.swift`
-- `TimeApp/Services/RecognitionPipeline.swift`
-- `TimeApp/Services/DaySnapshotService.swift`
+- `TimeApp/Recognition/VisionOCRService.swift`
+- `TimeApp/Recognition/TextScreenTimeParsers.swift`
+- `TimeApp/Recognition/ImageHourlyChartParser.swift`
+- `TimeApp/Services/AppGroupImportInbox.swift`
 - `TimeShareExtension/ShareViewController.swift`
 - `project.yml`
 
@@ -153,4 +154,4 @@ From GitHub Actions:
 Use these files for status:
 
 - `PROJECT_PROGRESS.md`
-- `HANDOFF.md`
+- `DEVELOPMENT.md`

@@ -1,7 +1,8 @@
 import Foundation
 
 protocol ManualActivityManaging: Sendable {
-    func save(block: ManualActivityBlock) async
+    @discardableResult
+    func save(block: ManualActivityBlock) async -> Bool
     func delete(blockID: UUID) async
     func blocks(for day: DayStamp) async -> [ManualActivityBlock]
 }
@@ -9,8 +10,20 @@ protocol ManualActivityManaging: Sendable {
 struct ManualActivityService: ManualActivityManaging {
     let repository: ManualActivityRepository
 
-    func save(block: ManualActivityBlock) async {
+    func save(block: ManualActivityBlock) async -> Bool {
+        let existingBlocks = await repository.fetch(day: block.day)
+        let overlapsExistingBlock = existingBlocks.contains { existing in
+            existing.id != block.id
+                && block.startMinuteOfDay < existing.endMinuteOfDay
+                && block.endMinuteOfDay > existing.startMinuteOfDay
+        }
+
+        guard !overlapsExistingBlock else {
+            return false
+        }
+
         await repository.save(block)
+        return true
     }
 
     func delete(blockID: UUID) async {
@@ -21,4 +34,3 @@ struct ManualActivityService: ManualActivityManaging {
         await repository.fetch(day: day)
     }
 }
-

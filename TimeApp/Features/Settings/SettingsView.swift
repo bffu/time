@@ -11,11 +11,11 @@ struct SettingsView: View {
                 Toggle("导入后自动打开检查页", isOn: $autoOpenReview)
             }
 
-            AppSectionCard(title: "架构说明", subtitle: "当前仓库先搭骨架，后续替换占位实现。") {
+            AppSectionCard(title: "架构说明", subtitle: "导入、识别、图表解析和对账链路已接通。") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("UI: SwiftUI")
                     Text("识别: Vision / 图表像素解析")
-                    Text("存储: 目前是内存仓储，后续切到 SwiftData")
+                    Text("存储: JSON 文件仓储，后续切到 SwiftData")
                     Text("分享入口: Share Extension")
                     Text("工程生成: XcodeGen project.yml")
                 }
@@ -26,4 +26,3 @@ struct SettingsView: View {
         .navigationTitle("设置")
     }
 }
-
